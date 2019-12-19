@@ -564,7 +564,8 @@ EOF
 
 #下载easzup安装包
 download::kubeasz(){
-    [ -z KUBEASZ_RELEASE ] && KUBEASZ_RELEASE="2.1.0"
+    [ -z KUBEASZ_RELEASE ] || KUBEASZ_RELEASE="2.1.0"
+    echo "downloading kubeasz:$KUBEASZ_RELEASE"
     curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/${KUBEASZ_RELEASE}/easzup
     mv ./easzup ~/easzup
     chmod +x ~/easzup
