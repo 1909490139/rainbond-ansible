@@ -646,9 +646,11 @@ prepare::r6d(){
         network="calico"
     fi
     info "Pod Network Provider" "${network}"
-    if [ "network" ==  "calico" ];then
+    if [ "$network" ==  "calico" ];then
+        echo "set CLUSTER_NETWORK is calico"
         sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
     else
+        echo "set CLUSTER_NETWORK is flannel"
         sed -i -r 's/(CLUSTER_NETWORK=).*/\1"flannel"/' /etc/ansible/example/hosts.allinone
     fi
     info "Pod Network Cidr" "${pod_network_cidr}"
