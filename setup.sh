@@ -566,7 +566,7 @@ EOF
 download::kubeasz(){
     [ -z KUBEASZ_RELEASE ] && KUBEASZ_RELEASE="2.1.0"
     echo "download kubeasz version $KUBEASZ_RELEASE"
-    curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/${KUBEASZ_RELEASE}/easzup
+    curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/2.1.0/easzup
     mv ./easzup ~/easzup
     chmod +x ~/easzup
     ~/easzup -D
