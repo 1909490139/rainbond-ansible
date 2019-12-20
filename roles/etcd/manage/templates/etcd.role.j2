@@ -5,7 +5,7 @@ services:
   - name: ETCD_ENDPOINTS
     protocol: http
     port: {{ etcd_port_c1 }}
-    health:
+  health:
     name: etcd
     model: tcp
     address: {{ etcd_server }}:{{ etcd_port_c1 }}
