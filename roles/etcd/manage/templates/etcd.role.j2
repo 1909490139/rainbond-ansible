@@ -8,6 +8,6 @@ services:
   health:
     name: etcd
     model: tcp
-    address: {{ etcd_server }}:{{ etcd_port_c1 }}
+    address: {{ etcd_ip }}:{{ etcd_port_c1 }}
     time_interval: 5
     max_errors_num: 3
