@@ -148,3 +148,6 @@
   service:
     name: node
     state: restarted
+
+- name: reload rbd config
+  shell: "node service update"
