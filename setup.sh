@@ -660,6 +660,7 @@ prepare::r6d(){
     sed -i -r 's/(dashboard_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml
     sed -r -i '/.*file.*/d' /etc/ansible/roles/etcd/templates/etcd.service.j2
     sed -r -i 's/https/http/' /etc/ansible/roles/etcd/templates/etcd.service.j2
+    sed -r -i 's/https/http/' /etc/ansible/roles/etcd/defaults/main.yml
 }
 
 # 3rd K8s preparation before installation
