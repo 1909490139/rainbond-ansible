@@ -662,7 +662,7 @@ prepare::r6d(){
     sed -i -r 's/https/http/' /etc/ansible/roles/etcd/templates/etcd.service.j2
     sed -i -r 's/https/http/' /etc/ansible/roles/etcd/defaults/main.yml
     sed -i -r 's/https/http/' /etc/ansible/roles/kube-master/defaults/main.yml
-    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaluts/main.yml
+    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaults/main.yml
 }
 
 # 3rd K8s preparation before installation
