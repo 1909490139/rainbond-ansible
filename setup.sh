@@ -577,7 +577,7 @@ install::k8s(){
 }
 
 do_install::k8s(){
-    [ ！-f /etc/ansible/roles/kube-master/tasks/main.yml ] && download::kubeasz
+    [ -f /etc/ansible/roles/kube-master/tasks/main.yml ] && download::kubeasz
 		if [ "$network" ==  "calico" ];then
         echo "set CLUSTER_NETWORK is calico"
         sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
