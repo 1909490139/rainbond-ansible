@@ -719,16 +719,7 @@ do_install::r6d(){
 do_install::3rd(){
     progress "Only Install Rainbond On Thirdparty Node"
     if [ -z "$DRY_RUN" ]; then
-        docker run --detach \
-            --name rbd-ansible \
-            --volume /opt/rainbond:/opt/rainbond \
-            --volume /root/.kube:/root/.kube \
-            --volume /root/.ssh/id_rsa:/root/.ssh/id_rsa:ro \
-            --volume /root/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro \
-            --volume /root/.ssh/known_hosts:/root/.ssh/known_hosts:ro \
-            --workdir /opt/rainbond/rainbond-ansible
-            easzlab/kubeasz:${KUBEASZ_VER} sleep 36000
-        run docker exec -it rbd-ansible ansible-playbook -i inventory/hosts hack/thirdparty/setup.yaml
+        run ansible-playbook -i inventory/hosts hack/thirdparty/setup.yaml
         if [ "$?" -eq 0 ]; then
             do_install::ok
         else
