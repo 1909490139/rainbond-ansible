@@ -585,6 +585,11 @@ prepare::general(){
     info "Installation type" "$INSTALL_TYPE"
     info "Deployment type" "$DEPLOY_TYPE"
     info "Rainbond Version" "$VERSION($r6d_version)"
+    if [ "$INSTALL_TYPE" == "online" ]; then
+        init::online
+    else
+        init::offline
+    fi
     [ -z "$IIP" ] && IIP=$1
     [ -z "$IIP" ] && IIP=$( get_default_ip )
     [ -z "$IIP" ] && notice "not found IIP"
