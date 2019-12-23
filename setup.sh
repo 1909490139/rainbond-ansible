@@ -592,7 +592,7 @@ do_install::k8s(){
     sed -i -r 's/https/http/' /etc/ansible/roles/etcd/templates/etcd.service.j2
     sed -i -r 's/https/http/' /etc/ansible/roles/etcd/defaults/main.yml
     sed -i -r 's/https/http/' /etc/ansible/roles/kube-master/defaults/main.yml
-    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaluts/main.yml
+    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaults/main.yml
     install::k8s
     run docker stop kubeasz && docker rm kubeasz
 }
