@@ -90,29 +90,6 @@ detect_linux_distribution(){
     esac
 }
 
-init::online(){
-    lsb_dist=$( get_distribution )
-    lsb_dist="$(echo "$lsb_dist" | tr '[:upper:]' '[:lower:]')"
-    progress "Detect $lsb_dist required packages..."
-    case "$lsb_dist" in
-		ubuntu|debian)
-            run apt-get update -q
-            run apt-get install -y -q sshpass python-pip uuid-runtime pwgen expect curl net-tools git
-		;;
-		centos)
-            run yum install -y -q epel-release 
-            run yum makecache fast -q
-            run yum install -y -q sshpass python-pip uuidgen pwgen expect curl net-tools git
-            run pip install -U setuptools -i https://pypi.tuna.tsinghua.edu.cn/simple
-		;;
-		*)
-           notice "Not Support $lsb_dist"
-		;;
-    esac
-    export LC_ALL=C
-    run pip install ansible==2.8.5 -i https://pypi.tuna.tsinghua.edu.cn/simple
-}
-
 # Support for CentOS offline deployment
 offline::centos(){
     info "Remove default CentOS source"
@@ -568,16 +545,37 @@ download::kubeasz(){
     echo "downloading kubeasz:$KUBEASZ_RELEASE"
     curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/${KUBEASZ_RELEASE}/easzup
 
-    mv ./easzup ~/easzup
-    chmod +x ~/easzup
-    ~/easzup -D
+    run mv ./easzup ~/easzup
+    run chmod +x ~/easzup
+    run ~/easzup -D
 }
 
 install::k8s(){
-    ~/easzup -S
-    docker exec -it kubeasz easzctl start-aio
+    run docker stop kubeasz && docker rm kubeasz
+    run ~/easzup -S
+    run docker exec -it kubeasz easzctl start-aio
 }
 
+do_install::k8s(){
+    [ ！-f /etc/ansible/roles/kube-master/tasks/main.yml ] && download::kubeasz
+		if [ "$network" ==  "calico" ];then
+        echo "set CLUSTER_NETWORK is calico"
+        sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
+    else
+        echo "set CLUSTER_NETWORK is flannel"
+        sed -i -r 's/(CLUSTER_NETWORK=).*/\1"flannel"/' /etc/ansible/example/hosts.allinone
+    fi
+		sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
+    sed -i -r 's/(metricsserver_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml 
+    sed -i -r 's/(dashboard_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml
+    sed -i -r '/.*file.*/d' /etc/ansible/roles/etcd/templates/etcd.service.j2
+    sed -i -r 's/https/http/' /etc/ansible/roles/etcd/templates/etcd.service.j2
+    sed -i -r 's/https/http/' /etc/ansible/roles/etcd/defaults/main.yml
+    sed -i -r 's/https/http/' /etc/ansible/roles/kube-master/defaults/main.yml
+    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaluts/main.yml
+    install::k8s
+    run docker stop kubeasz && docker rm kubeasz
+}
 # General preparation before installation
 prepare::general(){
     progress "Preparation before installation..."
@@ -587,11 +585,6 @@ prepare::general(){
     info "Installation type" "$INSTALL_TYPE"
     info "Deployment type" "$DEPLOY_TYPE"
     info "Rainbond Version" "$VERSION($r6d_version)"
-    if [ "$INSTALL_TYPE" == "online" ]; then
-        init::online
-    else
-        init::offline
-    fi
     [ -z "$IIP" ] && IIP=$1
     [ -z "$IIP" ] && IIP=$( get_default_ip )
     [ -z "$IIP" ] && notice "not found IIP"
@@ -619,7 +612,6 @@ prepare::general(){
     [ ! -z "$EIP" ] && config::region_url $EIP
     [ ! -z "$VIP" ] && config::region_url $VIP
     config::region_id
-    download::kubeasz
 }
 
 # 域名解析生效
@@ -646,23 +638,9 @@ prepare::r6d(){
         network="calico"
     fi
     info "Pod Network Provider" "${network}"
-    if [ "$network" ==  "calico" ];then
-        echo "set CLUSTER_NETWORK is calico"
-        sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
-    else
-        echo "set CLUSTER_NETWORK is flannel"
-        sed -i -r 's/(CLUSTER_NETWORK=).*/\1"flannel"/' /etc/ansible/example/hosts.allinone
-    fi
     info "Pod Network Cidr" "${pod_network_cidr}"
     sed -i -r "s/(^CLUSTER_NETWORK: ).*/\1$network/" roles/rainvar/defaults/main.yml
     sed -i -r "s#(^pod_cidr: ).*#\1$pod_network_cidr#" roles/rainvar/defaults/main.yml
-    sed -i -r 's/(metricsserver_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml 
-    sed -i -r 's/(dashboard_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml
-    sed -i -r '/.*file.*/d' /etc/ansible/roles/etcd/templates/etcd.service.j2
-    sed -i -r 's/https/http/' /etc/ansible/roles/etcd/templates/etcd.service.j2
-    sed -i -r 's/https/http/' /etc/ansible/roles/etcd/defaults/main.yml
-    sed -i -r 's/https/http/' /etc/ansible/roles/kube-master/defaults/main.yml
-    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaults/main.yml
 }
 
 # 3rd K8s preparation before installation
@@ -708,7 +686,16 @@ do_install::r6d(){
 do_install::3rd(){
     progress "Only Install Rainbond On Thirdparty Node"
     if [ -z "$DRY_RUN" ]; then
-        run ansible-playbook -i inventory/hosts hack/thirdparty/setup.yaml
+        docker run --detach \
+            --name rbd-ansible \
+            --volume /opt/rainbond:/opt/rainbond \
+            --volume /root/.kube:/root/.kube \
+            --volume /root/.ssh/id_rsa:/root/.ssh/id_rsa:ro \
+            --volume /root/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro \
+            --volume /root/.ssh/known_hosts:/root/.ssh/known_hosts:ro \
+            --workdir /opt/rainbond/rainbond-ansible
+            easzlab/kubeasz:${KUBEASZ_VER} sleep 36000
+        run docker exec -it rbd-ansible ansible-playbook -i inventory/hosts hack/thirdparty/setup.yaml
         if [ "$?" -eq 0 ]; then
             do_install::ok
         else
@@ -723,6 +710,7 @@ case $DEPLOY_TYPE in
     onenode)
         prepare::general
         prepare::r6d
+        do_install::k8s
         do_install::r6d
     ;;
     thirdparty)
