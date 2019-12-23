@@ -693,6 +693,7 @@ do_install::ok(){
 # Install the rainbond cluster
 do_install::r6d(){
     progress "Initialize the data center"
+    [ -z KUBEASZ_RELEASE ] || KUBEASZ_RELEASE="2.1.0"
     if [ -z "$DRY_RUN" ]; then
         run docker run --detach \
             --name rbd-ansible \
@@ -702,7 +703,7 @@ do_install::r6d(){
             --volume /root/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro \
             --volume /root/.ssh/known_hosts:/root/.ssh/known_hosts:ro \
             --workdir /opt/rainbond/rainbond-ansible \
-            easzlab/kubeasz:${KUBEASZ_RELEASE} sleep 36000
+            easzlab/kubeasz:$KUBEASZ_RELEASE sleep 36000
         run docker exec -it rbd-ansible ansible-playbook -i inventory/hosts hack/thirdparty/setup.yaml
         if [ "$?" -eq 0 ]; then
             curl -Is 127.0.0.1:7070 | head -1 | grep 200 > /dev/null && progress "Congratulations on your successful installation" || sleep 1
