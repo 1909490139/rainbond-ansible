@@ -90,6 +90,26 @@ detect_linux_distribution(){
     esac
 }
 
+init::online(){
+    lsb_dist=$( get_distribution )
+    lsb_dist="$(echo "$lsb_dist" | tr '[:upper:]' '[:lower:]')"
+    progress "Detect $lsb_dist required packages..."
+    case "$lsb_dist" in
+		ubuntu|debian)
+            run apt-get update -q
+            run apt-get install -y -q sshpass uuid-runtime pwgen expect curl net-tools git
+		;;
+		centos)
+            run yum install -y -q epel-release 
+            run yum makecache fast -q
+            run yum install -y -q sshpass uuidgen pwgen expect curl net-tools git
+		;;
+		*)
+           notice "Not Support $lsb_dist"
+		;;
+    esac
+    export LC_ALL=C
+}
 # Support for CentOS offline deployment
 offline::centos(){
     info "Remove default CentOS source"
