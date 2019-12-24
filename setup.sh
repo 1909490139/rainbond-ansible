@@ -695,6 +695,7 @@ do_install::r6d(){
     progress "Initialize the data center"
     [ -z KUBEASZ_RELEASE ] || KUBEASZ_RELEASE="2.1.0"
     if [ -z "$DRY_RUN" ]; then
+        run docker stop rbd-ansible && docker rm rbd-ansible
         run docker run --detach \
             --name rbd-ansible \
             --volume /opt/rainbond:/opt/rainbond \
