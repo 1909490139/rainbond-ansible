@@ -701,6 +701,7 @@ do_install::r6d(){
             --volume /opt/rainbond:/opt/rainbond \
             --volume /root/.kube:/root/.kube \
             --volume /etc/kubernetes:/etc/kubernetes \
+            --volume /opt/kube/bin:/opt/kube/bin \
             --volume /root/.ssh/id_rsa:/root/.ssh/id_rsa:ro \
             --volume /root/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro \
             --volume /root/.ssh/known_hosts:/root/.ssh/known_hosts:ro \
