@@ -704,7 +704,7 @@ do_install::r6d(){
             --volume /root/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro \
             --volume /root/.ssh/known_hosts:/root/.ssh/known_hosts:ro \
             easzlab/kubeasz:$KUBEASZ_RELEASE sleep 36000
-        run docker exec -it -w /opt/rainbond/rainbond-ansible rbd-ansible ansible-playbook -i inventory/hosts -e noderule=$ROLE setup.yaml
+        run docker exec -it -w /opt/rainbond/rainbond-ansible rbd-ansible ansible-playbook -i inventory/hosts -e noderule=$ROLE setup.yml
         if [ "$?" -eq 0 ]; then
             curl -Is 127.0.0.1:7070 | head -1 | grep 200 > /dev/null && progress "Congratulations on your successful installation" || sleep 1
             do_install::ok
