@@ -699,6 +699,7 @@ do_install::r6d(){
         run docker run --detach \
             --name rbd-ansible \
             --volume /opt/rainbond:/opt/rainbond \
+            --volume /grdata:/grdata \
             --volume /root/.kube:/root/.kube \
             --volume /etc/kubernetes:/etc/kubernetes \
             --volume /opt/kube/bin:/opt/kube/bin \
