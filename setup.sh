@@ -97,22 +97,19 @@ init::online(){
     case "$lsb_dist" in
 		ubuntu|debian)
             run apt-get update -q
-            run apt-get install -y -q sshpass python-pip uuid-runtime pwgen expect curl net-tools git
+            run apt-get install -y -q sshpass uuid-runtime pwgen expect curl net-tools git
 		;;
 		centos)
             run yum install -y -q epel-release 
             run yum makecache fast -q
-            run yum install -y -q sshpass python-pip uuidgen pwgen expect curl net-tools git
-            run pip install -U setuptools -i https://pypi.tuna.tsinghua.edu.cn/simple
+            run yum install -y -q sshpass uuidgen pwgen expect curl net-tools git
 		;;
 		*)
            notice "Not Support $lsb_dist"
 		;;
     esac
     export LC_ALL=C
-    run pip install ansible -i https://pypi.tuna.tsinghua.edu.cn/simple
 }
-
 # Support for CentOS offline deployment
 offline::centos(){
     info "Remove default CentOS source"
@@ -562,6 +559,43 @@ EOF
     done
 }
 
+#下载easzup安装包
+download::kubeasz(){
+    [ -z KUBEASZ_RELEASE ] || KUBEASZ_RELEASE="2.1.0"
+    echo "downloading kubeasz:$KUBEASZ_RELEASE"
+    curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/${KUBEASZ_RELEASE}/easzup
+
+    run mv ./easzup ~/easzup
+    run chmod +x ~/easzup
+    run ~/easzup -D
+}
+
+install::k8s(){
+    run docker stop kubeasz && docker rm kubeasz
+    run ~/easzup -S
+    run docker exec -it kubeasz easzctl start-aio
+}
+
+do_install::k8s(){
+    [ ! -f /etc/ansible/roles/kube-master/tasks/main.yml ] && download::kubeasz
+		if [ "$network" ==  "calico" ];then
+        echo "set CLUSTER_NETWORK is calico"
+        sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
+    else
+        echo "set CLUSTER_NETWORK is flannel"
+        sed -i -r 's/(CLUSTER_NETWORK=).*/\1"flannel"/' /etc/ansible/example/hosts.allinone
+    fi
+		sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
+    sed -i -r 's/(metricsserver_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml 
+    sed -i -r 's/(dashboard_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml
+    sed -i -r '/.*file.*/d' /etc/ansible/roles/etcd/templates/etcd.service.j2
+    sed -i -r 's/https/http/' /etc/ansible/roles/etcd/templates/etcd.service.j2
+    sed -i -r 's/https/http/' /etc/ansible/roles/etcd/defaults/main.yml
+    sed -i -r 's/https/http/' /etc/ansible/roles/kube-master/defaults/main.yml
+    sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaults/main.yml
+    install::k8s
+    run docker stop kubeasz && docker rm kubeasz
+}
 # General preparation before installation
 prepare::general(){
     progress "Preparation before installation..."
@@ -629,20 +663,6 @@ prepare::r6d(){
         network="calico"
     fi
     info "Pod Network Provider" "${network}"
-    if [ -z "$POD_NETWORK_CIDR" ]; then
-	INET_IP=${IIP%%.*}
-        if [ "$NETWORK_TYPE" == "flannel" ]; then
-            pod_network_cidr="${flannel_pod_network_cidr}"
-        else
-            if [ "$INET_IP" != "192" ]; then
-                pod_network_cidr="${calico_pod_network_cidr}"
-            else
-                pod_network_cidr="${pod_network_cidr_10}"
-            fi
-        fi
-    else
-        pod_network_cidr="${POD_NETWORK_CIDR}"
-    fi
     info "Pod Network Cidr" "${pod_network_cidr}"
     sed -i -r "s/(^CLUSTER_NETWORK: ).*/\1$network/" roles/rainvar/defaults/main.yml
     sed -i -r "s#(^pod_cidr: ).*#\1$pod_network_cidr#" roles/rainvar/defaults/main.yml
@@ -673,8 +693,21 @@ do_install::ok(){
 # Install the rainbond cluster
 do_install::r6d(){
     progress "Initialize the data center"
+    [ -z KUBEASZ_RELEASE ] || KUBEASZ_RELEASE="2.1.0"
     if [ -z "$DRY_RUN" ]; then
-        run ansible-playbook -i inventory/hosts -e noderule=$ROLE setup.yml
+        run docker stop rbd-ansible && docker rm rbd-ansible
+        run docker run --detach \
+            --name rbd-ansible \
+            --volume /opt/rainbond:/opt/rainbond \
+            --volume /grdata:/grdata \
+            --volume /root/.kube:/root/.kube \
+            --volume /etc/kubernetes:/etc/kubernetes \
+            --volume /opt/kube/bin:/opt/kube/bin \
+            --volume /root/.ssh/id_rsa:/root/.ssh/id_rsa:ro \
+            --volume /root/.ssh/id_rsa.pub:/root/.ssh/id_rsa.pub:ro \
+            --volume /root/.ssh/known_hosts:/root/.ssh/known_hosts:ro \
+            easzlab/kubeasz:$KUBEASZ_RELEASE sleep 36000
+        run docker exec -it -w /opt/rainbond/rainbond-ansible rbd-ansible ansible-playbook -i inventory/hosts -e noderule=$ROLE setup.yml
         if [ "$?" -eq 0 ]; then
             curl -Is 127.0.0.1:7070 | head -1 | grep 200 > /dev/null && progress "Congratulations on your successful installation" || sleep 1
             do_install::ok
@@ -705,6 +738,7 @@ case $DEPLOY_TYPE in
     onenode)
         prepare::general
         prepare::r6d
+        do_install::k8s
         do_install::r6d
     ;;
     thirdparty)
