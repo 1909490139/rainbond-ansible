@@ -577,8 +577,14 @@ install::k8s(){
 }
 
 do_install::k8s(){
+    if [ "$INSTALL_TYPE" != "online" ];then
+        sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/chrony/defaults/main.yml
+        sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/ex-lb/defaults/main.yml
+        sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/kube-node/defaults/main.yml
+        sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/prepare/defaults/main.yml
+    fi
     [ ! -f /etc/ansible/roles/kube-master/tasks/main.yml ] && download::kubeasz
-		if [ "$network" ==  "calico" ];then
+	if [ "$network" ==  "calico" ];then
         echo "set CLUSTER_NETWORK is calico"
         sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
     else
