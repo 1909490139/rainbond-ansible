@@ -564,20 +564,19 @@ download::kubeasz(){
     [ -z KUBEASZ_RELEASE ] || KUBEASZ_RELEASE="2.1.0"
     echo "downloading kubeasz:$KUBEASZ_RELEASE"
     curl -C- -fLO --retry 3 https://github.com/easzlab/kubeasz/releases/download/${KUBEASZ_RELEASE}/easzup
-
-    run mv ./easzup ~/easzup
-    run chmod +x ~/easzup
-    run ~/easzup -D
+    run chmod +x ./easzup
+    run ./easzup -D
 }
 
 install::k8s(){
     run docker stop kubeasz && docker rm kubeasz
-    run ~/easzup -S
+    run ./easzup -S
     run docker exec -it kubeasz easzctl start-aio
 }
 
 do_install::k8s(){
     if [ "$INSTALL_TYPE" != "online" ];then
+        ./easzup -D
         sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/chrony/defaults/main.yml
         sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/ex-lb/defaults/main.yml
         sed -i 's/^INSTALL_SOURCE.*$/INSTALL_SOURCE: "offline"/g' /etc/ansible/roles/kube-node/defaults/main.yml
