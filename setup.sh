@@ -590,7 +590,7 @@ do_install::k8s(){
         echo "set CLUSTER_NETWORK is flannel"
         sed -i -r 's/(CLUSTER_NETWORK=).*/\1"flannel"/' /etc/ansible/example/hosts.allinone
     fi
-		sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
+	sed -i -r 's/(CLUSTER_NETWORK=).*/\1"calico"/' /etc/ansible/example/hosts.allinone
     sed -i -r 's/(metricsserver_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml 
     sed -i -r 's/(dashboard_install: ).*/\1"no"/' /etc/ansible/roles/cluster-addon/defaults/main.yml
     sed -i -r '/.*file.*/d' /etc/ansible/roles/etcd/templates/etcd.service.j2
@@ -600,6 +600,16 @@ do_install::k8s(){
     sed -i -r 's/https/http/' /etc/ansible/roles/calico/defaults/main.yml
     install::k8s
     run docker stop kubeasz && docker rm kubeasz
+}
+
+prepare::k8scfg(){
+    sed -i -r 's/(k8s_apiserver: ).*/\1$k8s_apiserver/' /opt/rainbond/rainbond-ansible/roles/rainvar/defaults/main.yml
+    sed -i -r 's/(k8s_config_dir: ).*/\1$k8s_config_dir/' /opt/rainbond/rainbond-ansible/roles/rainvar/defaults/main.yml
+    sed -i -r 's/(k8s_certificate_dir: ).*/\1$k8s_certificate_dir/' /opt/rainbond/rainbond-ansible/roles/rainvar/defaults/main.yml
+    sed -i -r 's/(kubectl_bin: ).*/\1$kubectl_bin/' /opt/rainbond/rainbond-ansible/roles/rainvar/defaults/main.yml
+    sed -i -r  "s/(^etcd_port_c1: ).*/\1$etcd_port_c1/" roles/rainvar/defaults/main.yml
+    sed -i -r  "s/(^etcd_port_c2: ).*/\1$etcd_port_c2/" roles/rainvar/defaults/main.yml
+    sed -i -r  "s/(^etcd_port_s1: ).*/\1$etcd_port_s1/" roles/rainvar/defaults/main.yml
 }
 # General preparation before installation
 prepare::general(){
@@ -748,8 +758,9 @@ case $DEPLOY_TYPE in
     ;;
     thirdparty)
         prepare::general
-        prepare::3rd
-        do_install::3rd
+        prepare::r6d
+        prepare::k8scfg
+        do_install::r6d
     ;;
     *)
         notice "Illegal parameter DEPLOY_TYPE($DEPLOY_TYPE)"
